@@ -1,0 +1,192 @@
+package com.project2;
+import java.sql.*;
+import java.math.BigDecimal;
+import java.util.Scanner;
+public class AccountManager
+{
+    private Connection con;
+    private Scanner sc;
+
+    public AccountManager(Connection con,Scanner sc)
+    {
+        this.con=con;
+        this.sc=sc;
+    }
+    public void creditMoney(long accountNumber)throws SQLException
+    {
+        sc.nextLine();
+        System.out.println("Enter amount : ");
+        double amount=sc.nextDouble();
+        sc.nextLine();
+        System.out.println("Enter Security pin : ");
+        String securityPin=sc.nextLine();
+        //String Query="Select *from accounts where accountNumber=? and security_pin=?;";
+
+        try {
+            con.setAutoCommit(false);
+            if (accountNumber != 0) {
+                PreparedStatement preparedStatement = con.prepareStatement("Select *from accounts where accountNumber=? and security_pin=?");
+                preparedStatement.setLong(1, accountNumber);
+                preparedStatement.setString(2, securityPin);
+                ResultSet rs = preparedStatement.executeQuery();
+                if (rs.next()) {
+                    PreparedStatement preparedStatement1 = con.prepareStatement("Update accounts set balance=balance+? where accountNumber=?;");
+                    preparedStatement1.setDouble(1, amount);
+                    preparedStatement1.setLong(2, accountNumber);
+
+                    int rowsAffected = preparedStatement.executeUpdate();
+                    if (rowsAffected > 0) {
+                        System.out.println("Amount Rs." + amount + " credited Successfully..!");
+                        con.commit();
+                        con.setAutoCommit(true);
+                        return;
+                    } else {
+                        System.out.println("Transaction Failed...");
+                        con.rollback();
+                        con.setAutoCommit(true);
+                    }
+                }
+                else
+                    {
+                        System.out.println("Invalid Password...");
+                    }
+                }
+            }
+
+        catch(SQLException e)
+            {
+                System.out.println(e.getMessage());
+        }
+        con.setAutoCommit(true);
+    }
+    public void debitMoney(long accountNumber)throws SQLException
+    {
+                System.out.println("Enter amount to be debited : ");
+                double amount = sc.nextDouble();
+                sc.nextLine();
+                System.out.println("Enter Security Pin : ");
+                String password = sc.nextLine();
+        try {
+            if(accountNumber != 0) {
+                con.setAutoCommit(false);
+                String Query = "Select * from accounts where accountNumber=? && security_pin=?;";
+                PreparedStatement preparedStatement = con.prepareStatement(Query);
+                preparedStatement.setLong(1, accountNumber);
+                preparedStatement.setString(2, password);
+                ResultSet rs = preparedStatement.executeQuery();
+                if (rs.next()) {
+                    double current_balance = rs.getDouble("balance");
+                    if (amount <= current_balance) {
+                        String updateQuery = "Update accounts set balance=balance-? where accountNumber=?;";
+                        PreparedStatement preparedStatement1 = con.prepareStatement(updateQuery);
+                        preparedStatement1.setDouble(1, amount);
+                        preparedStatement1.setLong(2, accountNumber);
+                        int rowsAffected = preparedStatement.executeUpdate();
+                        if (rowsAffected > 0) {
+                            System.out.println("Rs."+amount+" Debited Successfully...!");
+                            con.commit();
+                            con.setAutoCommit(true);
+                        } else {
+                            System.out.println("Transaction Failed...");
+                            con.rollback();
+                            con.setAutoCommit(true);
+                        }
+                    } else {
+                        System.out.println("Required Amount is not there..");
+                    }
+                } else {
+                    System.out.println("Please enter valid acccountNumber...");
+                }
+            }
+
+        }
+        catch(SQLException e)
+        {
+            System.out.println(e.getMessage());
+        }
+        con.setAutoCommit(true);
+    }
+    public void transferMoney(long accountNumber)throws SQLException
+    {
+        System.out.println("Enter Receivers account number : ");
+        long receiveraccNumber=sc.nextLong();
+        System.out.println("Enter amount to send : ");
+        double amount=sc.nextDouble();
+        sc.nextLine();
+        System.out.println("Enter Security Pin : ");
+        String password=sc.nextLine();
+        try {
+            con.setAutoCommit(false);
+            String Query = "Select *from accounts where accountNumber=? and security_pin=?;";
+            if (accountNumber != 0 && receiveraccNumber != 0) {
+                PreparedStatement preparedStatement = con.prepareStatement(Query);
+                preparedStatement.setLong(1, accountNumber);
+                preparedStatement.setString(2, password);
+                ResultSet rs = preparedStatement.executeQuery();
+                if (rs.next()) {
+                    double senderBalance = rs.getDouble("balance");
+                    if (senderBalance <= amount) {
+                        String debitQuery = "Update accounts set balance=balance-? where accountNumber=?;";
+                        String creditQuery = "Update accounts set balance=balance+? where accountNumber=?;";
+                        PreparedStatement debitprepstmt = con.prepareStatement(debitQuery);
+                        PreparedStatement creditprepstmt = con.prepareStatement(creditQuery);
+                        debitprepstmt.setDouble(1, amount);
+                        debitprepstmt.setLong(2, accountNumber);
+                        creditprepstmt.setDouble(1, amount);
+                        creditprepstmt.setLong(2, receiveraccNumber);
+                        int rowsaffectDebit = debitprepstmt.executeUpdate();
+                        int creditrowaff = creditprepstmt.executeUpdate();
+                        if (rowsaffectDebit > 0 && creditrowaff > 0) {
+                            System.out.println("Amount Rs." + amount + " transfered Successfully...!");
+                            con.commit();
+                            con.setAutoCommit(true);
+                            return;
+                        } else {
+                            System.out.println("Transaction Failed");
+                            con.rollback();
+                            con.setAutoCommit(true);
+                        }
+                    } else {
+                        System.out.println("Insufficient balance");
+                    }
+                } else {
+                    System.out.println("Enter valid details..");
+                }
+            } else {
+                System.out.println("Enter valid accountdetails..");
+            }
+        }
+        catch(SQLException e)
+        {
+            System.out.println(e.getMessage());
+        }
+        con.setAutoCommit(true);
+    }
+public void getBalance(long accountNumber)
+{
+    System.out.println("Enter Security pin : ");
+    String security_pin=sc.nextLine();
+    try {
+        if (accountNumber != 0) {
+            String fetchQuery = "Select balance from accounts where accountNumber=? and security_pin=?;";
+            PreparedStatement preparedStatement = con.prepareStatement(fetchQuery);
+            preparedStatement.setLong(1, accountNumber);
+            preparedStatement.setString(2, security_pin);
+            ResultSet rs = preparedStatement.executeQuery();
+            if (rs.next()) {
+                System.out.println("Balance : " + rs.getDouble("balance"));
+            } else {
+                System.out.println("Enter valid details..");
+            }
+        } else {
+            System.out.println("Enter valis accountNumber...");
+        }
+    }
+    catch(SQLException e)
+    {
+        System.out.println(e.getMessage());
+    }
+
+}
+
+}
